@@ -65,8 +65,32 @@
         <input type="text" name="local_match_confident_threshold" value="{{ config.local_match_confident_threshold }}">
       </label>
       <label class="settings-field">
+        <span>CJK font path (for stickers)</span>
+        <input type="text" name="cjk_font_path" value="{{ config.cjk_font_path or '' }}"
+               placeholder="e.g. /usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc - leave empty to disable">
+      </label>
+      <label class="settings-field">
         <span>Max parallel workers ("Match YT" / "Run All")</span>
         <input type="text" name="max_workers" value="{{ config.max_workers }}">
+      </label>
+      <label class="settings-field">
+        <span>Musical key notation</span>
+        <select name="key_notation">
+          <option value="standard" {{ "selected" if config.key_notation == "standard" }}>Standard (e.g. "F# Minor")</option>
+          <option value="camelot" {{ "selected" if config.key_notation == "camelot" }}>Camelot Wheel (e.g. "11A")</option>
+        </select>
+      </label>
+      <label class="settings-field">
+        <span>Sticker label sheet</span>
+        <select name="sticker_preset">
+          {% for key, preset in sticker_presets.items() %}
+          <option value="{{ key }}" {{ "selected" if config.sticker_preset == key }}>{{ preset.display_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="settings-field">
+        <span>DJ/collector name (printed on stickers)</span>
+        <input type="text" name="dj_name" value="{{ config.dj_name or '' }}" placeholder="leave empty to omit">
       </label>
 
       <button type="submit">Save</button>

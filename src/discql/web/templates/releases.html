@@ -66,6 +66,10 @@
      href="/releases?{{ list_query }}"
      hx-get="/releases?{{ list_query }}" hx-target="#results-wrapper" hx-swap="innerHTML" hx-push-url="true">List</a>
 </span>
+<form class="select-all-stickers" method="post" action="/stickers/select_all?{{ select_all_query }}">
+  <input type="hidden" name="redirect_to" value="{{ request.url.path }}?{{ request.url.query }}">
+  <button type="submit" title="Add every release matching the current filters to the sticker selection">Select all {{ total }} &rarr; stickers</button>
+</form>
 {% endblock %}
 
 {% block content %}

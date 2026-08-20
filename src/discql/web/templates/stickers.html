@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Stickers — DiscQL{% endblock %}
+
+{% block toolbar %}
+{% if items %}
+<a class="button-link" href="/stickers/sheet.pdf" download>Download sticker sheet (PDF)</a>
+<form method="post" action="/stickers/clear"
+      onsubmit="return confirm('Clear the entire sticker selection? This only clears the selection, not your library.');">
+  <button type="submit" class="danger-link">Clear selection</button>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block toolbar_secondary %}
+<span class="view-toggle">
+  <a class="{{ 'active' if view == 'grid' else '' }}" href="/stickers?view=grid">Grid</a>
+  <a class="{{ 'active' if view == 'list' else '' }}" href="/stickers?view=list">List</a>
+</span>
+{% endblock %}
+
+{% block content %}
+<div id="results-wrapper">
+  {% include results_partial %}
+</div>
+{% endblock %}

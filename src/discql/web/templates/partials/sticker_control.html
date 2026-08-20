@@ -1,0 +1,12 @@
+{% if item.id in sticker_selection_ids %}
+<form class="sticker-control sticker-control-remove" method="post" action="/stickers/remove/{{ item.id }}">
+  <input type="hidden" name="redirect_to" value="{{ request.url.path }}?{{ request.url.query }}">
+  <button type="submit" title="Remove from sticker selection">&minus; Sticker</button>
+</form>
+{% else %}
+<form class="sticker-control sticker-control-add" method="post" action="/stickers/add">
+  <input type="hidden" name="release_id" value="{{ item.id }}">
+  <input type="hidden" name="redirect_to" value="{{ request.url.path }}?{{ request.url.query }}">
+  <button type="submit" title="Add to sticker selection">+ Sticker</button>
+</form>
+{% endif %}

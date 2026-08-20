@@ -16,11 +16,15 @@
     if (localStorage.getItem("crateMode") === "on") {
       document.documentElement.classList.add("crate-mode-on");
     }
+    if (localStorage.getItem("stickerMode") === "on") {
+      document.documentElement.classList.add("sticker-mode-on");
+    }
   </script>
   <header class="topbar">
     <div class="topbar-row topbar-main">
       <a class="brand" href="/releases">DiscQL</a>
       <a class="nav-link" href="/crates">Crates</a>
+      <a class="nav-link" href="/stickers">Stickers</a>
       <a class="nav-link" href="/settings">Settings</a>
       {% block toolbar %}{% endblock %}
     </div>
@@ -39,6 +43,17 @@
         // since this checkbox element doesn't exist yet at that point.
         document.getElementById("crate-mode-checkbox").checked =
           document.documentElement.classList.contains("crate-mode-on");
+      </script>
+      <label class="sticker-mode-toggle" title="Show add/remove-from-sticker-selection controls on release cards">
+        <input type="checkbox" id="sticker-mode-checkbox" onchange="
+          document.documentElement.classList.toggle('sticker-mode-on', this.checked);
+          localStorage.setItem('stickerMode', this.checked ? 'on' : 'off');
+        ">
+        sticker mode
+      </label>
+      <script>
+        document.getElementById("sticker-mode-checkbox").checked =
+          document.documentElement.classList.contains("sticker-mode-on");
       </script>
       <label class="force-refetch-label" title="Redo already-finished work instead of skipping it, for whichever task you start below">
         <input type="checkbox" name="force" id="global-force" value="true">

@@ -16,10 +16,11 @@
     {% if item.year %}<span class="cover-year">{{ item.year }}</span>{% endif %}
   </div>
   {% include "partials/crate_control.html" %}
+  {% include "partials/sticker_control.html" %}
 </div>
 {% endfor %}
 {% if not items and not continuation %}
-<p class="empty-state">{{ "This crate is empty - add releases to it from the library." if crate else "No releases match your filters." }}</p>
+<p class="empty-state">{{ "This crate is empty - add releases to it from the library." if crate else ("No releases in your sticker selection yet - add some from the library." if sticker_view else "No releases match your filters.") }}</p>
 {% endif %}
 {% if has_more %}
 <div class="pagination-controls">

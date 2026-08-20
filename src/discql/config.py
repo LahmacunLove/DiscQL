@@ -44,6 +44,36 @@ DEFAULT_LOCAL_FLAC_DIR = ""
 # LOCAL_MATCH_CONFIDENT_THRESHOLD in the config file or environment.
 DEFAULT_LOCAL_MATCH_CONFIDENT_THRESHOLD = 0.75
 
+# CJK (Chinese/Japanese/Korean) glyph coverage for sticker generation - see
+# stickers.py. Empty by default (disabled, same "empty = disabled"
+# convention as LOCAL_FLAC_DIR above): real CJK fonts are large (tens of MB)
+# and ship in formats reportlab's TTFont can't load at all (confirmed:
+# "postscript outlines are not supported" for Noto Sans CJK's .ttc), so
+# there's no bundled default the way there is for DejaVu Sans (Cyrillic/
+# extended Latin) - CJK text renders via a Pillow-rasterized image instead
+# of vector text if and only if this points at a font file on disk (e.g.
+# /usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc on Arch). Set via
+# CJK_FONT_PATH in the config file or environment.
+DEFAULT_CJK_FONT_PATH = ""
+
+# How musical key is displayed (release page tracklist, stickers): "standard"
+# (the stored Essentia pitch-class spelling as-is, just with a proper Unicode
+# accidental glyph) or "camelot" (DJ Camelot Wheel notation, e.g. "11A") -
+# see musical_key.format_key. Adjustable via KEY_NOTATION in the config file
+# or environment, or the Settings page.
+DEFAULT_KEY_NOTATION = "standard"
+
+# Which physical label sheet stickers are laid out for - a key into
+# stickers.PRESETS (e.g. "avery_l4744rev65", "herma_4222"). Adjustable via
+# STICKER_PRESET in the config file or environment, or the Settings page.
+DEFAULT_STICKER_PRESET = "avery_l4744rev65"
+
+# DJ/collector name printed on stickers (see stickers.py) - purely personal
+# text, empty by default (same "empty = disabled" convention as
+# LOCAL_FLAC_DIR above). Adjustable via DJ_NAME in the config file or
+# environment, or the Settings page.
+DEFAULT_DJ_NAME = ""
+
 
 # Browser to pull YouTube cookies from (yt-dlp's --cookies-from-browser),
 # e.g. "firefox", "chrome", "chromium", "brave", "edge", "safari", "vivaldi",
@@ -88,9 +118,14 @@ class Config:
     waveform_dir: Path
     essentia_models_dir: Path
     cover_dir: Path
+    sticker_dir: Path
     max_workers: int
     local_flac_dir: Path | None
+    cjk_font_path: Path | None
     local_match_confident_threshold: float
+    key_notation: str
+    sticker_preset: str
+    dj_name: str
     discogs_consumer_key: str | None
     discogs_consumer_secret: str | None
     discogs_oauth_token: str | None
@@ -246,10 +281,40 @@ def load_config() -> Config:
         DEFAULT_LOCAL_FLAC_DIR,
     )
     _ensure_default_in_config_file(
+        "CJK_FONT_PATH",
+        "# Path to a CJK-capable font file (e.g. Noto Sans CJK) for rendering\n"
+        "# Chinese/Japanese/Korean text on stickers. Leave empty to disable -\n"
+        "# such text then just renders as whatever (likely blank) glyphs the\n"
+        "# regular sticker font has for those characters, same as before.",
+        DEFAULT_CJK_FONT_PATH,
+    )
+    _ensure_default_in_config_file(
         "LOCAL_MATCH_CONFIDENT_THRESHOLD",
         "# Fuzzy score (0-1) above which a local folder is trusted as a release's\n"
         "# match, and a local file is trusted as a track's match.",
         DEFAULT_LOCAL_MATCH_CONFIDENT_THRESHOLD,
+    )
+    _ensure_default_in_config_file(
+        "KEY_NOTATION",
+        "# How musical key is displayed: 'standard' (stored pitch-class spelling\n"
+        "# as-is, e.g. \"F# Minor\") or 'camelot' (DJ Camelot Wheel notation, e.g.\n"
+        "# \"11A\").",
+        DEFAULT_KEY_NOTATION,
+    )
+    _ensure_default_in_config_file(
+        "STICKER_PRESET",
+        "# Which physical label sheet/paper stickers are laid out for - the\n"
+        "# sticker sheet product you actually have. Valid values (a key into\n"
+        "# stickers.PRESETS):\n"
+        "#   avery_l4744rev65 - Avery Zweckform L4744REV-65 (96 x 50.8mm, 2x5/sheet)\n"
+        "#   herma_4222       - Herma 4222 (63.5 x 29.633mm, 3x9/sheet)\n"
+        "# Also changeable from the Settings page.",
+        DEFAULT_STICKER_PRESET,
+    )
+    _ensure_default_in_config_file(
+        "DJ_NAME",
+        "# Your DJ/collector name, printed on stickers. Leave empty to omit it.",
+        DEFAULT_DJ_NAME,
     )
     _ensure_default_in_config_file(
         "MAX_WORKERS",
@@ -289,6 +354,10 @@ def load_config() -> Config:
     # audio_dir, since re-fetching every release's cover on every request
     # would be wasteful and there's no "delete after use" reason to.
     cover_dir = Path(os.environ.get("COVER_DIR", str(CACHE_DIR / "covers"))).expanduser()
+    # Generated sticker PDFs are cheap to regenerate (a single canvas draw
+    # from already-cached cover/waveform/analysis data), so this is a plain
+    # output dir, not a config-file-scaffolded tunable.
+    sticker_dir = Path(os.environ.get("STICKER_DIR", str(CACHE_DIR / "stickers"))).expanduser()
 
     fuzzy_confident_threshold = float(
         os.environ.get("FUZZY_CONFIDENT_THRESHOLD", DEFAULT_FUZZY_CONFIDENT_THRESHOLD)
@@ -310,9 +379,14 @@ def load_config() -> Config:
 
     local_flac_dir_raw = os.environ.get("LOCAL_FLAC_DIR", DEFAULT_LOCAL_FLAC_DIR).strip()
     local_flac_dir = Path(local_flac_dir_raw).expanduser() if local_flac_dir_raw else None
+    cjk_font_path_raw = os.environ.get("CJK_FONT_PATH", DEFAULT_CJK_FONT_PATH).strip()
+    cjk_font_path = Path(cjk_font_path_raw).expanduser() if cjk_font_path_raw else None
     local_match_confident_threshold = float(
         os.environ.get("LOCAL_MATCH_CONFIDENT_THRESHOLD", DEFAULT_LOCAL_MATCH_CONFIDENT_THRESHOLD)
     )
+    key_notation = os.environ.get("KEY_NOTATION", DEFAULT_KEY_NOTATION).strip() or DEFAULT_KEY_NOTATION
+    sticker_preset = os.environ.get("STICKER_PRESET", DEFAULT_STICKER_PRESET).strip() or DEFAULT_STICKER_PRESET
+    dj_name = os.environ.get("DJ_NAME", DEFAULT_DJ_NAME).strip()
 
     # OAuth credentials - no code default/config-file scaffolding like the
     # settings above (see _ensure_default_in_config_file calls): they don't
@@ -336,9 +410,14 @@ def load_config() -> Config:
         waveform_dir=waveform_dir,
         essentia_models_dir=essentia_models_dir,
         cover_dir=cover_dir,
+        sticker_dir=sticker_dir,
         max_workers=max_workers,
         local_flac_dir=local_flac_dir,
+        cjk_font_path=cjk_font_path,
         local_match_confident_threshold=local_match_confident_threshold,
+        key_notation=key_notation,
+        sticker_preset=sticker_preset,
+        dj_name=dj_name,
         discogs_consumer_key=discogs_consumer_key,
         discogs_consumer_secret=discogs_consumer_secret,
         discogs_oauth_token=discogs_oauth_token,

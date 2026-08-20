@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from discql import crates, db
+from discql import crates, db, sticker_selection
 from discql.discogs_api import ArtistData, LabelData, ReleaseData, TrackData
 from discql.sync import upsert_release
 from discql.web import repository
@@ -304,6 +304,16 @@ def test_list_releases_filters_by_crate_id(conn):
     crates.add_release(conn, crate_id, 1)
 
     results = repository.list_releases(conn, crate_id=crate_id)
+
+    assert [r.title for r in results] == ["Alpha"]
+
+
+def test_list_releases_filters_by_in_sticker_selection(conn):
+    seed(conn, 1, "Alpha", "Artist A", ["Electronic"])
+    seed(conn, 2, "Beta", "Artist B", ["Rock"])
+    sticker_selection.add_release(conn, 1)
+
+    results = repository.list_releases(conn, in_sticker_selection=True)
 
     assert [r.title for r in results] == ["Alpha"]
 

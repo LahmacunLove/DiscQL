@@ -176,6 +176,7 @@ def _where_clause(
     bpm: float | None = None,
     bpm_tolerance_pct: float | None = None,
     crate_id: int | None = None,
+    in_sticker_selection: bool = False,
 ) -> tuple[str, dict]:
     clauses = ["r.removed_from_discogs_at IS NULL"]
     params: dict = {}
@@ -258,6 +259,9 @@ def _where_clause(
         )
         params["crate_id"] = crate_id
 
+    if in_sticker_selection:
+        clauses.append("EXISTS (SELECT 1 FROM sticker_selection ss WHERE ss.release_id = r.id)")
+
     return " AND ".join(clauses), params
 
 
@@ -273,12 +277,13 @@ def list_releases(
     bpm: float | None = None,
     bpm_tolerance_pct: float | None = None,
     crate_id: int | None = None,
+    in_sticker_selection: bool = False,
     sort: str = DEFAULT_SORT,
     limit: int | None = 48,
     offset: int = 0,
 ) -> list[ReleaseSummary]:
     where_sql, params = _where_clause(
-        q, genres, year, styles, label_name, artist_name, bpm, bpm_tolerance_pct, crate_id
+        q, genres, year, styles, label_name, artist_name, bpm, bpm_tolerance_pct, crate_id, in_sticker_selection
     )
     order_sql = SORT_OPTIONS.get(sort, SORT_OPTIONS[DEFAULT_SORT])
 
@@ -346,9 +351,10 @@ def count_releases(
     bpm: float | None = None,
     bpm_tolerance_pct: float | None = None,
     crate_id: int | None = None,
+    in_sticker_selection: bool = False,
 ) -> int:
     where_sql, params = _where_clause(
-        q, genres, year, styles, label_name, artist_name, bpm, bpm_tolerance_pct, crate_id
+        q, genres, year, styles, label_name, artist_name, bpm, bpm_tolerance_pct, crate_id, in_sticker_selection
     )
     row = conn.execute(
         f"SELECT COUNT(*) AS n FROM releases r WHERE {where_sql}", params

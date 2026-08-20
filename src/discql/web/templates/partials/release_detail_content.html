@@ -117,7 +117,7 @@
             {% if track.bpm %}{{ "%.0f" | format(track.bpm) }}{% else %}<span class="not-analyzed">—</span>{% endif %}
           </td>
           <td>
-            {% if track.musical_key %}{{ track.musical_key }} {{ track.musical_key_scale or "" }}{% else %}<span class="not-analyzed">—</span>{% endif %}
+            {% if track.musical_key %}{{ track.musical_key | format_key(track.musical_key_scale) }}{% else %}<span class="not-analyzed">—</span>{% endif %}
           </td>
           <td>
             {% if track.mood_summary %}{{ track.mood_summary }}{% else %}<span class="not-analyzed">—</span>{% endif %}
@@ -213,12 +213,31 @@
       <li class="download-result-{{ 'downloaded' if result.status == 'analyzed' else result.status }}">
         {{ result.position or "?" }} — {{ result.title }}: {{ result.status }}
         {% if result.status == "analyzed" %}
-        (BPM {{ "%.0f" | format(result.bpm) if result.bpm else "?" }}, {{ result.musical_key or "?" }}, {{ result.mood_summary }})
+        (BPM {{ "%.0f" | format(result.bpm) if result.bpm else "?" }}, {{ (result.musical_key | format_key(result.musical_key_scale)) or "?" }}, {{ result.mood_summary }})
         {% endif %}
       </li>
       {% endfor %}
     </ul>
     {% endif %}
+    {% endif %}
+
+    <a
+      class="button-link"
+      href="/releases/{{ release.id }}/sticker.pdf"
+      download
+      title="Generate and download a printable sticker (Avery Zweckform L4744REV-65 format) for this release."
+    >Sticker (PDF) herunterladen</a>
+    {% if in_sticker_selection %}
+    <form class="sticker-control sticker-control-remove" method="post" action="/stickers/remove/{{ release.id }}">
+      <input type="hidden" name="redirect_to" value="/releases/{{ release.id }}">
+      <button type="submit" title="Remove from sticker selection">&minus; Sticker selection</button>
+    </form>
+    {% else %}
+    <form class="sticker-control sticker-control-add" method="post" action="/stickers/add">
+      <input type="hidden" name="release_id" value="{{ release.id }}">
+      <input type="hidden" name="redirect_to" value="/releases/{{ release.id }}">
+      <button type="submit" title="Add to sticker selection">+ Sticker selection</button>
+    </form>
     {% endif %}
 
     <h2>Videos</h2>

@@ -1146,6 +1146,95 @@ def test_release_detail_shows_crate_membership(client):
     assert "Warehouse Gig" in response.text
 
 
+# --- sticker mode (selection + combined sheet PDF) --------------------------
+
+
+def test_stickers_page_empty_state(client):
+    response = client.get("/stickers")
+
+    assert response.status_code == 200
+    assert "No releases in your sticker selection yet" in response.text
+
+
+def test_add_release_to_stickers_then_shows_on_page(client):
+    response = client.post(
+        "/stickers/add", data={"release_id": 1, "redirect_to": "/stickers"}, follow_redirects=False
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == "/stickers"
+
+    detail = client.get("/stickers")
+    assert "Acid Test" in detail.text
+    assert "Rock Anthology" not in detail.text
+
+
+def test_adding_a_release_to_stickers_does_not_change_the_library(client):
+    client.post("/stickers/add", data={"release_id": 1})
+
+    response = client.get("/releases")
+    assert "Acid Test" in response.text
+
+
+def test_remove_release_from_stickers(client):
+    client.post("/stickers/add", data={"release_id": 1})
+
+    response = client.post("/stickers/remove/1", follow_redirects=False)
+    assert response.status_code == 303
+
+    detail = client.get("/stickers")
+    assert "Acid Test" not in detail.text
+
+
+def test_clear_sticker_selection(client):
+    client.post("/stickers/add", data={"release_id": 1})
+    client.post("/stickers/add", data={"release_id": 2})
+
+    response = client.post("/stickers/clear", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/stickers"
+
+    detail = client.get("/stickers")
+    assert "Acid Test" not in detail.text
+    assert "Rock Anthology" not in detail.text
+
+
+def test_select_all_stickers_adds_only_currently_filtered_releases(client):
+    response = client.post(
+        "/stickers/select_all", params={"genre": "Electronic"}, follow_redirects=False
+    )
+    assert response.status_code == 303
+
+    detail = client.get("/stickers")
+    assert "Acid Test" in detail.text
+    assert "Rock Anthology" not in detail.text
+
+
+def test_sticker_sheet_pdf_for_non_empty_selection(client):
+    client.post("/stickers/add", data={"release_id": 1})
+
+    response = client.get("/stickers/sheet.pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+def test_sticker_sheet_pdf_404_when_selection_empty(client):
+    response = client.get("/stickers/sheet.pdf")
+
+    assert response.status_code == 404
+
+
+def test_release_detail_shows_sticker_selection_toggle(client):
+    response = client.get("/releases/1")
+    assert "Add to sticker selection" in response.text
+
+    client.post("/stickers/add", data={"release_id": 1})
+
+    response = client.get("/releases/1")
+    assert "Remove from sticker selection" in response.text
+
+
 # --- settings page / setup-redirect middleware ------------------------------
 
 
@@ -1199,8 +1288,12 @@ def test_saving_settings_with_a_token_unblocks_other_pages(client_without_auth):
             "youtube_cookies_browser": "",
             "youtube_audio_max_bitrate_kbps": "128",
             "local_flac_dir": "",
+            "cjk_font_path": "",
             "local_match_confident_threshold": "0.75",
             "max_workers": "4",
+            "key_notation": "standard",
+            "sticker_preset": "avery_l4744rev65",
+            "dj_name": "",
         },
         follow_redirects=False,
     )
@@ -1223,8 +1316,12 @@ def test_saving_settings_with_blank_token_field_keeps_the_existing_token(client)
             "youtube_cookies_browser": "",
             "youtube_audio_max_bitrate_kbps": "128",
             "local_flac_dir": "",
+            "cjk_font_path": "",
             "local_match_confident_threshold": "0.75",
             "max_workers": "4",
+            "key_notation": "standard",
+            "sticker_preset": "avery_l4744rev65",
+            "dj_name": "",
         },
     )
 
@@ -1247,8 +1344,12 @@ def test_saving_settings_persists_tuning_values_to_the_config_file(client, tmp_p
             "youtube_cookies_browser": "firefox",
             "youtube_audio_max_bitrate_kbps": "128",
             "local_flac_dir": "",
+            "cjk_font_path": "",
             "local_match_confident_threshold": "0.75",
             "max_workers": "6",
+            "key_notation": "standard",
+            "sticker_preset": "avery_l4744rev65",
+            "dj_name": "",
         },
     )
 

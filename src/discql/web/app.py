@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from discql import audio_analysis, audio_download, cover_art, crates as crates_module, db, ollama_client, pipeline, sync, youtube_matching
+from discql import audio_analysis, audio_download, cover_art, crates as crates_module, db, musical_key, ollama_client, pipeline, sticker_selection, stickers, sync, youtube_matching
 from discql.config import USER_AGENT, Config, load_config, set_config_values
 from discql.discogs_api import build_discogs_api
 from discql.web import repository, tasks
@@ -42,6 +42,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="DiscQL", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates.env.filters["format_key"] = lambda key, scale: musical_key.format_key(key, scale, get_config().key_notation)
 
 
 def static_url(path: str) -> str:
@@ -140,6 +141,51 @@ def index() -> RedirectResponse:
     return RedirectResponse(url="/releases")
 
 
+def _active_sticker_preset(config: Config) -> stickers.LabelPreset:
+    return stickers.PRESETS.get(config.sticker_preset, stickers.PRESETS[stickers.DEFAULT_PRESET_KEY])
+
+
+def _parse_release_filters(
+    q: str | None,
+    genre: list[str],
+    style: list[str],
+    year: str | None,
+    label: str | None,
+    artist: str | None,
+    bpm: str | None,
+    bpm_tolerance: list[str],
+) -> dict:
+    """Builds repository.list_releases/count_releases filter kwargs from
+    /releases' raw query params - shared with /stickers/select_all so
+    "select all filtered" resolves the exact same set of releases. Caller
+    must already have dropped empty-checkbox entries from genre/style/
+    bpm_tolerance (a submitted-but-empty checkbox group arrives as [""]).
+    """
+    try:
+        year_int = int(year) if year else None
+    except ValueError:
+        year_int = None
+    try:
+        bpm_float = float(bpm) if bpm else None
+    except ValueError:
+        bpm_float = None
+    # Checkboxes are additive tolerance bands around the same target BPM
+    # (Exact/±8%/±16%, see repository._where_clause), not independent
+    # filters - checking more than one is only ever wider, so the widest
+    # checked band is what actually determines the match.
+    bpm_tolerance_pct = None
+    if bpm_float is not None and bpm_tolerance:
+        try:
+            bpm_tolerance_pct = max(float(t) for t in bpm_tolerance) / 100
+        except ValueError:
+            bpm_tolerance_pct = None
+
+    return dict(
+        q=q, genres=genre, styles=style, year=year_int, label_name=label, artist_name=artist,
+        bpm=bpm_float, bpm_tolerance_pct=bpm_tolerance_pct,
+    )
+
+
 @app.get("/releases", response_class=HTMLResponse)
 def releases(
     request: Request,
@@ -164,34 +210,13 @@ def releases(
         sort = repository.DEFAULT_SORT
     page = max(page, 1)
     offset = (page - 1) * PAGE_SIZE
-    try:
-        year_int = int(year) if year else None
-    except ValueError:
-        year_int = None
-    try:
-        bpm_float = float(bpm) if bpm else None
-    except ValueError:
-        bpm_float = None
     # A submitted-but-empty checkbox group (e.g. the form's genre="" default)
     # arrives as [""], not [] - filter it down to nothing selected.
     genre = [g for g in genre if g]
     style = [s for s in style if s]
     bpm_tolerance = [t for t in bpm_tolerance if t]
-    # Checkboxes are additive tolerance bands around the same target BPM
-    # (Exact/±8%/±16%, see repository._where_clause), not independent
-    # filters - checking more than one is only ever wider, so the widest
-    # checked band is what actually determines the match.
-    bpm_tolerance_pct = None
-    if bpm_float is not None and bpm_tolerance:
-        try:
-            bpm_tolerance_pct = max(float(t) for t in bpm_tolerance) / 100
-        except ValueError:
-            bpm_tolerance_pct = None
 
-    filter_kwargs = dict(
-        q=q, genres=genre, styles=style, year=year_int, label_name=label, artist_name=artist,
-        bpm=bpm_float, bpm_tolerance_pct=bpm_tolerance_pct,
-    )
+    filter_kwargs = _parse_release_filters(q, genre, style, year, label, artist, bpm, bpm_tolerance)
 
     if show_all:
         items = repository.list_releases(conn, sort=sort, limit=None, **filter_kwargs)
@@ -265,6 +290,8 @@ def releases(
         "list_query": query_string(view="list"),
         "all_crates": repository.list_crates_with_counts(conn),
         "crate": None,
+        "sticker_selection_ids": sticker_selection.selected_ids(conn),
+        "select_all_query": query_string(),
     }
 
     partial_template = (
@@ -296,6 +323,7 @@ def release_detail(
             "fuzzy_matrix": fuzzy_matrix,
             "all_crates": repository.list_crates_with_counts(conn),
             "crate_ids": repository.crate_ids_for_release(conn, release_id),
+            "in_sticker_selection": sticker_selection.is_selected(conn, release_id),
         },
     )
 
@@ -498,6 +526,31 @@ def get_cover(release_id: int, conn: sqlite3.Connection = Depends(get_db)) -> Fi
     if path is None:
         raise HTTPException(status_code=404, detail="No cover for this release")
     return FileResponse(path)
+
+
+@app.get("/releases/{release_id}/sticker.pdf")
+def get_release_sticker(release_id: int, conn: sqlite3.Connection = Depends(get_db)) -> FileResponse:
+    """Generates (or regenerates - always fresh, cheap) and serves a
+    printable sticker PDF for one release (Avery Zweckform L4744REV-65
+    format), from already-cached cover/waveform/analysis data - see
+    stickers.py.
+    """
+    release = repository.get_release_detail(conn, release_id)
+    if release is None:
+        raise HTTPException(status_code=404, detail="Release not found")
+
+    config = get_config()
+    path = stickers.generate_release_sticker_pdf(
+        release,
+        config.cover_dir,
+        config.waveform_dir,
+        config.sticker_dir,
+        config.key_notation,
+        config.cjk_font_path,
+        _active_sticker_preset(config),
+        config.dj_name,
+    )
+    return FileResponse(path, media_type="application/pdf", filename=f"{release.id}.pdf")
 
 
 def _make_sync_runner(force_refetch: bool) -> tasks.Runner:
@@ -787,6 +840,7 @@ def crate_detail(
             "has_more": False,
             "continuation": False,
             "results_partial": partial_template,
+            "sticker_selection_ids": sticker_selection.selected_ids(conn),
         },
     )
 
@@ -827,6 +881,116 @@ def remove_release_from_crate(
     return RedirectResponse(url=redirect_to or f"/crates/{crate_id}", status_code=303)
 
 
+@app.get("/stickers", response_class=HTMLResponse)
+def stickers_page(
+    request: Request, view: str = "grid", conn: sqlite3.Connection = Depends(get_db)
+) -> HTMLResponse:
+    if view not in ("grid", "list"):
+        view = "grid"
+
+    items = repository.list_releases(conn, in_sticker_selection=True, limit=None)
+    status_by_id: dict[int, dict[str, str]] = {}
+    if view == "list":
+        audio_dir = get_config().audio_dir
+        for item in items:
+            downloaded_count = audio_download.count_downloaded_tracks(audio_dir, item.id)
+            status_by_id[item.id] = {
+                "matching": _matching_status(item.matched_count, item.track_count, item.matching_processed),
+                "download": _availability_status(downloaded_count, item.matched_count, item.track_count),
+                "analysis": _availability_status(item.analyzed_count, item.matched_count, item.track_count),
+            }
+
+    partial_template = "partials/results_grid.html" if view == "grid" else "partials/results_list.html"
+    return templates.TemplateResponse(
+        request,
+        "stickers.html",
+        {
+            "items": items,
+            "status_by_id": status_by_id,
+            "total": len(items),
+            "view": view,
+            "all_crates": [],
+            "crate": None,
+            "has_more": False,
+            "continuation": False,
+            "results_partial": partial_template,
+            "sticker_selection_ids": {item.id for item in items},
+            "sticker_view": True,
+        },
+    )
+
+
+@app.post("/stickers/add")
+def add_release_to_stickers(
+    release_id: int = Form(...),
+    redirect_to: str = Form("/releases"),
+    conn: sqlite3.Connection = Depends(get_db),
+) -> RedirectResponse:
+    sticker_selection.add_release(conn, release_id)
+    return RedirectResponse(url=redirect_to, status_code=303)
+
+
+@app.post("/stickers/remove/{release_id}")
+def remove_release_from_stickers(
+    release_id: int,
+    redirect_to: str = Form(None),
+    conn: sqlite3.Connection = Depends(get_db),
+) -> RedirectResponse:
+    sticker_selection.remove_release(conn, release_id)
+    return RedirectResponse(url=redirect_to or "/stickers", status_code=303)
+
+
+@app.post("/stickers/select_all")
+def select_all_for_stickers(
+    q: str | None = None,
+    genre: list[str] = Query(default=[]),
+    style: list[str] = Query(default=[]),
+    year: str | None = None,
+    label: str | None = None,
+    artist: str | None = None,
+    bpm: str | None = None,
+    bpm_tolerance: list[str] = Query(default=[]),
+    redirect_to: str = Form("/releases"),
+    conn: sqlite3.Connection = Depends(get_db),
+) -> RedirectResponse:
+    genre = [g for g in genre if g]
+    style = [s for s in style if s]
+    bpm_tolerance = [t for t in bpm_tolerance if t]
+    filter_kwargs = _parse_release_filters(q, genre, style, year, label, artist, bpm, bpm_tolerance)
+    matching = repository.list_releases(conn, limit=None, **filter_kwargs)
+    sticker_selection.add_many(conn, [item.id for item in matching])
+    return RedirectResponse(url=redirect_to, status_code=303)
+
+
+@app.post("/stickers/clear")
+def clear_sticker_selection(conn: sqlite3.Connection = Depends(get_db)) -> RedirectResponse:
+    sticker_selection.clear(conn)
+    return RedirectResponse(url="/stickers", status_code=303)
+
+
+@app.get("/stickers/sheet.pdf")
+def get_sticker_sheet(conn: sqlite3.Connection = Depends(get_db)) -> FileResponse:
+    ids = sticker_selection.selected_ids(conn)
+    if not ids:
+        raise HTTPException(status_code=404, detail="Sticker selection is empty")
+
+    releases_for_sheet = [
+        r for r in (repository.get_release_detail(conn, release_id) for release_id in ids) if r is not None
+    ]
+    config = get_config()
+    path = stickers.generate_sticker_sheet_pdf(
+        releases_for_sheet,
+        config.cover_dir,
+        config.waveform_dir,
+        config.sticker_dir,
+        config.key_notation,
+        config.cjk_font_path,
+        _active_sticker_preset(config),
+        config.dj_name,
+    )
+    return FileResponse(path, media_type="application/pdf", filename="stickers.pdf")
+
+
 # OAuth 1.0a needs the same discogs_client.Client instance across two
 # separate requests (the request token/secret it gets back from Discogs on
 # the first call live on that object, consumed by the second - see
@@ -850,6 +1014,7 @@ def settings_page(request: Request, saved: bool = False, oauth_error: str | None
             "saved": saved,
             "oauth_error": oauth_error,
             "oauth_callback_url": callback_url,
+            "sticker_presets": stickers.PRESETS,
         },
     )
 
@@ -863,8 +1028,12 @@ def save_settings(
     youtube_cookies_browser: str = Form(""),
     youtube_audio_max_bitrate_kbps: str = Form(""),
     local_flac_dir: str = Form(""),
+    cjk_font_path: str = Form(""),
     local_match_confident_threshold: str = Form(...),
     max_workers: str = Form(...),
+    key_notation: str = Form(...),
+    sticker_preset: str = Form(...),
+    dj_name: str = Form(""),
 ) -> RedirectResponse:
     values = {
         "FUZZY_CONFIDENT_THRESHOLD": fuzzy_confident_threshold,
@@ -873,8 +1042,12 @@ def save_settings(
         "YOUTUBE_COOKIES_BROWSER": youtube_cookies_browser,
         "YOUTUBE_AUDIO_MAX_BITRATE_KBPS": youtube_audio_max_bitrate_kbps,
         "LOCAL_FLAC_DIR": local_flac_dir,
+        "STICKER_PRESET": sticker_preset,
+        "DJ_NAME": dj_name,
+        "CJK_FONT_PATH": cjk_font_path,
         "LOCAL_MATCH_CONFIDENT_THRESHOLD": local_match_confident_threshold,
         "MAX_WORKERS": max_workers,
+        "KEY_NOTATION": key_notation,
     }
     # Deliberately not pre-filled/always-submitted like the fields above -
     # the token isn't shown back in plaintext once set, so submitting the

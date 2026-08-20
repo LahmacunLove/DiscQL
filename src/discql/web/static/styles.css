@@ -185,6 +185,18 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer;
 }
 
+.button-link {
+  display: inline-block;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .force-refetch-label,
 .crate-mode-toggle {
   display: flex;
@@ -598,6 +610,64 @@ html.crate-mode-on .list-row .crate-control-add {
   position: absolute;
   top: 0.4rem;
   right: 0.4rem;
+}
+
+/* Add/remove sticker-selection control - see partials/sticker_control.html.
+   Mirrors .crate-control's gating exactly (opt-in via "sticker mode" toggle
+   on repeated cards, always visible on the release detail page and on the
+   /stickers page's own remove control), just a single toggle instead of a
+   crate-choice dropdown. */
+.sticker-control {
+  position: relative;
+  z-index: 2;
+}
+
+/* Opposite corner from .crate-control's badge so both controls can be
+   toggled on at once without overlapping. */
+.cover-card .sticker-control {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+}
+
+.cover-card .sticker-control-add,
+.list-row .sticker-control-add {
+  display: none;
+}
+
+html.sticker-mode-on .cover-card .sticker-control-add,
+html.sticker-mode-on .list-row .sticker-control-add {
+  display: flex;
+}
+
+.sticker-control button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+/* "Select all filtered" bulk action on /releases - same opt-in-via-sticker-
+   mode gating as the per-card add control. */
+.select-all-stickers {
+  display: none;
+}
+
+html.sticker-mode-on .select-all-stickers {
+  display: inline-block;
+}
+
+.select-all-stickers button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .crate-chip {
