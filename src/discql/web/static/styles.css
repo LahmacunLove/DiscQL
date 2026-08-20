@@ -1,0 +1,739 @@
+:root {
+  color-scheme: light dark;
+  --bg: #121212;
+  --surface: #1e1e1e;
+  --border: #333;
+  --text: #eee;
+  --text-dim: #999;
+  --accent: #6ab0ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a { color: inherit; text-decoration: none; }
+
+.topbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.topbar-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.topbar-tasks {
+  gap: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.topbar-pending {
+  margin-left: auto;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
+.back-link { color: var(--accent); }
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.filters input,
+.filters select,
+.filters button,
+.filters .reset-link {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.filters button { cursor: pointer; }
+
+.filters .reset-link {
+  color: var(--text-dim);
+}
+
+.filters .reset-link:hover {
+  color: var(--text);
+}
+
+.checkbox-filter {
+  position: relative;
+}
+
+.checkbox-filter summary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.checkbox-filter summary::-webkit-details-marker { display: none; }
+
+.checkbox-filter-options {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 16rem;
+  min-width: 12rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.checkbox-filter-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+}
+
+.checkbox-filter-options label:hover {
+  background: var(--bg);
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.view-toggle a {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.view-toggle a.active {
+  background: var(--accent);
+  color: #111;
+  border-color: var(--accent);
+}
+
+.sync-widget {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.sync-widget button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#sync-widget-wrapper, #youtube-widget-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.secondary-action {
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.force-refetch-label,
+.crate-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.sync-widget.error .sync-text { color: #ff8080; }
+.sync-widget.done .sync-text { color: #7fd97f; }
+
+.pending-text {
+  color: var(--text-dim);
+  opacity: 0.75;
+  font-size: 0.8rem;
+}
+
+.spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+main { padding: 1rem; }
+
+.result-count {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.cover-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* Full-bleed invisible link over the whole card, so the card stays
+   click-to-navigate while still allowing an interactive crate-add/remove
+   control (which can't be nested inside an <a>) to sit on top of it - see
+   partials/crate_control.html. */
+.cover-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.cover-card img,
+.cover-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--text-dim);
+}
+
+.cover-placeholder-sm { width: 48px; height: 48px; aspect-ratio: 1; font-size: 1.2rem; flex-shrink: 0; }
+.cover-placeholder-lg { width: 100%; aspect-ratio: 1; font-size: 4rem; }
+
+.cover-meta { display: flex; flex-direction: column; }
+.cover-title { font-weight: 600; font-size: 0.9rem; }
+.cover-artist, .cover-year { color: var(--text-dim); font-size: 0.8rem; }
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.list-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* Same overlay-link pattern as .cover-card-link, see there. */
+.list-row-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.list-row img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.list-title { font-weight: 600; min-width: 200px; }
+.list-artist { color: var(--text-dim); min-width: 160px; }
+.list-year { color: var(--text-dim); width: 4rem; }
+.list-genres { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+
+.status-indicators {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.status-dot.done {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #08202f;
+}
+
+.status-dot.partial {
+  background: #d9a441;
+  border-color: #d9a441;
+  color: #2b1d02;
+}
+
+.badge {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.badge-style, .badge-ai-style { opacity: 0.7; }
+
+.pagination-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.load-more {
+  flex: 1;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  cursor: pointer;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  color: var(--text-dim);
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.detail {
+  display: flex;
+  gap: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.detail-cover { flex: 0 0 300px; }
+.detail-cover img, .detail-cover .cover-placeholder { border-radius: 8px; }
+.detail-info { flex: 1 1 400px; min-width: 280px; }
+.detail-info h1 { margin: 0 0 0.25rem; }
+.detail-artists { font-size: 1.1rem; color: var(--accent); margin: 0 0 0.25rem; }
+.detail-meta, .detail-labels { color: var(--text-dim); margin: 0.15rem 0; }
+.detail-info h1 a:hover, .detail-artists a:hover, .detail-labels a:hover { text-decoration: underline; }
+.detail-tags { margin: 0.5rem 0; display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.detail-tags-ai { margin-top: 0.15rem; }
+.detail-credits { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+.credit-role { color: var(--text); font-weight: 600; }
+
+.extra-images {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.extra-images img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.video-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+
+.video-list li {
+  padding: 0.4rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Grid, not flexbox: each row is its own independent flex container, so
+   flexbox sizing (even with min-width) only guarantees a *floor*, not a
+   truly fixed width - a row with a wider-than-usual duration or badge text
+   grows just that row, breaking alignment against every other row. Grid's
+   explicit fixed-length column tracks (not "auto", which would size to
+   content the same way flexbox does) are identical for every row
+   regardless of content, so title/duration/badge always land in the same
+   horizontal position - see git history on this file for the two flexbox
+   attempts that didn't hold up. */
+.video-main {
+  display: grid;
+  grid-template-columns: 1fr 4.5rem 9rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.video-list a { color: var(--accent); overflow-wrap: break-word; }
+.video-duration { color: var(--text-dim); text-align: right; }
+.video-main .badge { text-align: center; }
+
+.video-match-info {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.video-reasoning { font-style: italic; }
+
+.video-type-full_track { border-color: #4a7; color: #7fd97f; }
+.video-type-compilation_or_mix { border-color: #a74; color: #e0a860; }
+.video-type-unrelated { opacity: 0.6; }
+
+.match-actions {
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.match-actions button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+}
+
+.match-error {
+  color: #ff8080;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.htmx-indicator { opacity: 0; transition: opacity 100ms ease-in; color: var(--text-dim); font-size: 0.85rem; }
+.htmx-request.htmx-indicator, .htmx-request .htmx-indicator { opacity: 1; }
+
+.download-results {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.download-results li { padding: 0.2rem 0; }
+.download-result-downloaded { color: #7fd97f; }
+.download-result-failed { color: #ff8080; }
+.download-path { color: var(--text-dim); font-size: 0.8rem; margin-left: 0.4rem; }
+
+.waveform-row td { padding: 0 0.5rem 0.5rem; border-bottom: 1px solid var(--border); }
+.waveform-image { display: block; width: 100%; max-width: 100%; height: 40px; object-fit: contain; }
+
+.matrix-scroll { overflow-x: auto; margin-top: 0.5rem; }
+
+.fuzzy-matrix {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.fuzzy-matrix th, .fuzzy-matrix td {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.5rem;
+  text-align: right;
+}
+
+.matrix-video-title {
+  text-align: left;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matrix-selected {
+  background: rgba(122, 217, 122, 0.2);
+  font-weight: 600;
+}
+
+.matrix-selected-llm {
+  background: rgba(106, 176, 255, 0.25);
+  font-weight: 600;
+}
+
+.tracklist {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.tracklist th, .tracklist td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tracklist .not-analyzed { color: var(--text-dim); }
+
+.nav-link {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.nav-link:hover { color: var(--text); }
+
+/* Add-to-crate (library context) / remove-from-crate (crate detail
+   context) control - see partials/crate_control.html. Needs position +
+   z-index above .cover-card-link/.list-row-link (both z-index: 1) to
+   stay clickable instead of the click falling through to the card's own
+   navigation link underneath it. */
+.crate-control {
+  position: relative;
+  z-index: 2;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.crate-control-add,
+.crate-control-remove {
+  display: flex;
+}
+
+/* The *add* control is opt-in via the "crate mode" toggle (base.html), but
+   only on repeated release-list cards (grid/list view) - hidden by default
+   there so normal browsing isn't cluttered with a dropdown+button on every
+   single card, shown once toggled on (persisted in localStorage, see
+   base.html's inline scripts). Left always-visible on a release's own
+   detail page (one release, one control - not clutter the way dozens of
+   repeated card controls are) and on the crate detail page's remove
+   control (hiding "how do I get this out of the crate I'm literally
+   looking at" behind the same toggle would be actively unhelpful). */
+.cover-card .crate-control-add,
+.list-row .crate-control-add {
+  display: none;
+}
+
+html.crate-mode-on .cover-card .crate-control-add,
+html.crate-mode-on .list-row .crate-control-add {
+  display: flex;
+}
+
+.crate-control select,
+.crate-control button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.crate-control select { max-width: 7rem; }
+
+/* On grid cards, float the control as a small corner badge instead of
+   pushing the card's own image/meta layout around. */
+.cover-card .crate-control {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+}
+
+.crate-chip {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.crate-chip button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0 0.2rem;
+}
+
+.crate-chip button:hover { color: var(--text); }
+
+.detail-crates {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.detail-crates-label,
+.detail-crates-empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.crates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 32rem;
+}
+
+.crate-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.crate-card:hover { border-color: var(--accent); }
+.crate-card-name { font-weight: 600; }
+.crate-card-count { color: var(--text-dim); font-size: 0.85rem; }
+
+.danger-link {
+  background: var(--surface);
+  color: #ff8080;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.settings-page {
+  max-width: 40rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.settings-welcome { color: var(--text); }
+
+.settings-flash {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.settings-saved { background: rgba(127, 217, 127, 0.15); color: #7fd97f; }
+.settings-error { background: rgba(255, 128, 128, 0.15); color: #ff8080; }
+
+.settings-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.settings-section h2 { margin-top: 0; }
+.settings-section h3 { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 0.5rem; }
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.settings-field span { color: var(--text-dim); }
+
+.settings-field input {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.settings-hint { color: var(--text-dim); font-size: 0.85rem; }
+.settings-hint code { background: var(--surface); padding: 0.1rem 0.3rem; border-radius: 4px; }
+
+.settings-oauth {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.settings-readonly {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 1rem;
+  font-size: 0.85rem;
+}
+
+.settings-readonly dt { color: var(--text-dim); }
+.settings-readonly dd { margin: 0; word-break: break-all; }

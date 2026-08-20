@@ -1,0 +1,290 @@
+<div id="detail-content" class="detail">
+  <div class="detail-cover">
+    {% if release.cover_image_url %}
+    <img src="/covers/{{ release.id }}" alt="{{ release.title }}">
+    {% else %}
+    <div class="cover-placeholder cover-placeholder-lg">♪</div>
+    {% endif %}
+    {% if release.images|length > 1 %}
+    <div class="extra-images">
+      {% for img in release.images[1:] %}
+      <img src="{{ img.uri150 or img.uri }}" alt="">
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="detail-info">
+    <h1>{% if release.discogs_uri %}<a href="{{ release.discogs_uri }}" target="_blank" rel="noopener">{{ release.title }}</a>{% else %}{{ release.title }}{% endif %}</h1>
+    <p class="detail-artists">
+      {% for artist in release.artists %}
+      <a href="https://www.discogs.com/artist/{{ artist.id }}" target="_blank" rel="noopener">{{ artist.name }}</a>{% if not loop.last %}, {% endif %}
+      {% endfor %}
+    </p>
+    <p class="detail-meta">
+      {% if release.year %}{{ release.year }}{% endif %}
+      {% if release.country %} · {{ release.country }}{% endif %}
+      {% if release.date_added %} · added {{ release.date_added[:10] }}{% endif %}
+    </p>
+
+    {% if release.labels %}
+    <p class="detail-labels">
+      {% for label in release.labels %}
+      <span><a href="https://www.discogs.com/label/{{ label.id }}" target="_blank" rel="noopener">{{ label.name }}</a>{% if label.catalog_number %} ({{ label.catalog_number }}){% endif %}</span>{% if not loop.last %}, {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+
+    {% if release.genres or release.styles %}
+    <p class="detail-tags">
+      {% for g in release.genres %}<span class="badge">{{ g }}</span>{% endfor %}
+      {% for s in release.styles %}<span class="badge badge-style">{{ s }}</span>{% endfor %}
+    </p>
+    {% endif %}
+
+    {% if release.ai_genres or release.ai_styles %}
+    <p class="detail-tags detail-tags-ai">
+      {% for g in release.ai_genres %}<span class="badge badge-ai" title="Genre detected by audio analysis (Essentia)">{{ g }}</span>{% endfor %}
+      {% for s in release.ai_styles %}<span class="badge badge-ai-style" title="Style detected by audio analysis (Essentia): {{ s }}">{{ s.split("---", 1)[-1] }}</span>{% endfor %}
+    </p>
+    {% endif %}
+
+    <p class="detail-crates">
+      <span class="detail-crates-label">Crates:</span>
+      {% for c in all_crates | selectattr("id", "in", crate_ids) | list %}
+      <form class="crate-chip" method="post" action="/crates/{{ c.id }}/remove_release/{{ release.id }}">
+        <input type="hidden" name="redirect_to" value="/releases/{{ release.id }}">
+        <span>{{ c.name }}</span>
+        <button type="submit" title="Remove from this crate">&times;</button>
+      </form>
+      {% endfor %}
+      {% set available_crates = all_crates | rejectattr("id", "in", crate_ids) | list %}
+      {% if available_crates %}
+      <form class="crate-control" method="post" action="/crates/add_release">
+        <input type="hidden" name="release_id" value="{{ release.id }}">
+        <input type="hidden" name="redirect_to" value="/releases/{{ release.id }}">
+        <select name="crate_id" title="Add to crate">
+          {% for c in available_crates %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" title="Add to crate">+</button>
+      </form>
+      {% endif %}
+      {% if not all_crates %}
+      <span class="detail-crates-empty"><a href="/crates">Create a crate</a> to add this release to one.</span>
+      {% endif %}
+    </p>
+
+    {% if release.credits %}
+    <p class="detail-credits">
+      {% for role, entries in release.credits | groupby("role") %}
+      <span class="credit-role">{{ role }}:</span>
+      {% for c in entries %}<a href="https://www.discogs.com/artist/{{ c.artist_id }}" target="_blank" rel="noopener">{{ c.artist_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}<br>{% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+
+    <h2>Tracklist</h2>
+    <table class="tracklist">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          {% if release.tracks_have_distinct_artists %}<th>Artist</th>{% endif %}
+          <th>Duration</th>
+          <th>Video</th>
+          <th>BPM</th>
+          <th>Key</th>
+          <th>Mood</th>
+          <th>Genre</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for track in release.tracks %}
+        <tr>
+          <td>{{ track.position or "" }}</td>
+          <td>{{ track.title }}</td>
+          {% if release.tracks_have_distinct_artists %}
+          <td>{{ track.artist or release.artist_names | join(", ") }}</td>
+          {% endif %}
+          <td>{{ track.duration or "" }}</td>
+          <td>
+            {% if track.matched_video_url %}
+            <a href="{{ track.matched_video_url }}" target="_blank" rel="noopener" title="{{ track.matched_video_title }}">&#9654;</a>
+            {% else %}
+            <span class="not-analyzed">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if track.bpm %}{{ "%.0f" | format(track.bpm) }}{% else %}<span class="not-analyzed">—</span>{% endif %}
+          </td>
+          <td>
+            {% if track.musical_key %}{{ track.musical_key }} {{ track.musical_key_scale or "" }}{% else %}<span class="not-analyzed">—</span>{% endif %}
+          </td>
+          <td>
+            {% if track.mood_summary %}{{ track.mood_summary }}{% else %}<span class="not-analyzed">—</span>{% endif %}
+          </td>
+          <td>
+            {% if track.style %}<span title="{{ track.style }}">{{ track.style.split("---", 1)[-1] }}</span>{% else %}<span class="not-analyzed">—</span>{% endif %}
+          </td>
+        </tr>
+        {% if track.waveform_path %}
+        <tr class="waveform-row">
+          <td colspan="{{ 9 if release.tracks_have_distinct_artists else 8 }}">
+            <img class="waveform-image" src="/waveforms/{{ release.id }}/{{ track.waveform_path }}" alt="Waveform for {{ track.title }}">
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if release.videos %}
+    <div class="match-actions">
+      {% if match_error %}
+      <div class="match-error">Matching failed: {{ match_error }}</div>
+      {% endif %}
+      <button
+        hx-post="/releases/{{ release.id }}/match_youtube?force=false"
+        hx-target="#detail-content"
+        hx-swap="outerHTML"
+        hx-indicator="#match-indicator"
+        title="Fetches YouTube metadata only for videos that don't have it yet, then (re)computes matches"
+      >Match YouTube videos for this release</button>
+      <button
+        class="secondary-action"
+        hx-post="/releases/{{ release.id }}/clear_youtube_matches"
+        hx-target="#detail-content"
+        hx-swap="outerHTML"
+        hx-indicator="#match-indicator"
+        hx-confirm="Clear all matching results for this release? Fetched YouTube metadata is kept."
+        title="Wipe matching results back to unmatched, without recomputing or re-fetching anything"
+      >Clear fuzzy matching</button>
+      <span id="match-indicator" class="htmx-indicator">matching…</span>
+    </div>
+
+    {% set downloadable_tracks = release.tracks | selectattr("matched_video_url") | list %}
+    {% if downloadable_tracks %}
+    <div class="match-actions">
+      {% if download_error %}
+      <div class="match-error">Download failed: {{ download_error }}</div>
+      {% endif %}
+      <button
+        hx-post="/releases/{{ release.id }}/download_tracks"
+        hx-target="#detail-content"
+        hx-swap="outerHTML"
+        hx-indicator="#download-indicator"
+        title="Download best-quality audio (no re-encoding, audio-only) for every track with a matched video. Skips tracks already downloaded."
+      >Download tracks for this release</button>
+      <span id="download-indicator" class="htmx-indicator">downloading…</span>
+    </div>
+    {% if download_results %}
+    <ul class="download-results">
+      {% for result in download_results %}
+      <li class="download-result-{{ result.status }}">
+        {{ result.position or "?" }} — {{ result.title }}: {{ result.status.replace("_", " ") }}
+        {% if result.path %}<span class="download-path">{{ result.path }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <button
+      hx-post="/releases/{{ release.id }}/analyze_tracks"
+      hx-target="#detail-content"
+      hx-swap="outerHTML"
+      hx-indicator="#analyze-indicator"
+      title="Analyze BPM/key/mood and generate a waveform for every track with a matched video (downloads audio on demand and deletes it again afterward, unless it was already downloaded via the button above)."
+    >Analyze tracks for this release</button>
+    <button
+      class="secondary-action"
+      hx-post="/releases/{{ release.id }}/clear_analysis"
+      hx-target="#detail-content"
+      hx-swap="outerHTML"
+      hx-indicator="#analyze-indicator"
+      hx-confirm="Clear all audio analysis results (BPM/key/mood/genre/waveform) for this release? Matched videos and downloaded audio are kept."
+      title="Wipe analysis results back to unanalyzed, without touching matched videos or downloaded audio"
+    >Clear audio analysis</button>
+    <span id="analyze-indicator" class="htmx-indicator">analyzing…</span>
+    {% if analyze_error %}
+    <div class="match-error">Analysis failed: {{ analyze_error }}</div>
+    {% endif %}
+    {% if analyze_results %}
+    <ul class="download-results">
+      {% for result in analyze_results %}
+      <li class="download-result-{{ 'downloaded' if result.status == 'analyzed' else result.status }}">
+        {{ result.position or "?" }} — {{ result.title }}: {{ result.status }}
+        {% if result.status == "analyzed" %}
+        (BPM {{ "%.0f" | format(result.bpm) if result.bpm else "?" }}, {{ result.musical_key or "?" }}, {{ result.mood_summary }})
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endif %}
+
+    <h2>Videos</h2>
+    <ul class="video-list">
+      {% for video in release.videos %}
+      <li>
+        <div class="video-main">
+          <a href="{{ video.url }}" target="_blank" rel="noopener">{{ video.title or video.url }}</a>
+          <span class="video-duration">{% if video.duration %}{{ "%d:%02d" | format(video.duration // 60, video.duration % 60) }}{% endif %}</span>
+          {% if video.video_type %}
+          <span class="badge video-type-{{ video.video_type }}">{{ video.video_type.replace("_", " ") }}</span>
+          {% else %}
+          <span class="badge">not yet matched</span>
+          {% endif %}
+        </div>
+        {% if video.matched_track_position and video.is_selected %}
+        <div class="video-match-info">
+          matched to track {{ video.matched_track_position }}
+          {% if video.fuzzy_score is not none %}· fuzzy score {{ "%.2f" | format(video.fuzzy_score) }}{% endif %}
+          {% if video.llm_confidence is not none %}· LLM confidence {{ "%.2f" | format(video.llm_confidence) }}{% endif %}
+        </div>
+        {% elif video.matched_track_position %}
+        <div class="video-match-info">
+          also matches track {{ video.matched_track_position }} (alternate candidate, not the primary pick)
+          {% if video.fuzzy_score is not none %}· fuzzy score {{ "%.2f" | format(video.fuzzy_score) }}{% endif %}
+          {% if video.llm_confidence is not none %}· LLM confidence {{ "%.2f" | format(video.llm_confidence) }}{% endif %}
+        </div>
+        {% elif video.fuzzy_score is not none %}
+        <div class="video-match-info">
+          best fuzzy guess: track {{ video.best_fuzzy_track_position or "?" }}, score {{ "%.2f" | format(video.fuzzy_score) }}
+          {% if video.llm_confidence is not none %}· LLM confidence {{ "%.2f" | format(video.llm_confidence) }}{% endif %}
+        </div>
+        {% endif %}
+        {% if video.video_type_reasoning %}
+        <div class="video-match-info video-reasoning">{{ video.video_type_reasoning }}</div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% if fuzzy_matrix %}
+    <h2>Debug: fuzzy score matrix (temporary)</h2>
+    <p class="detail-meta">Every track × video fuzzy score, not just the winning pick — for tracking down matching errors.</p>
+    <div class="matrix-scroll">
+      <table class="fuzzy-matrix">
+        <thead>
+          <tr>
+            <th>Video</th>
+            {% for track in release.tracks %}
+            <th>{{ track.position or "?" }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in fuzzy_matrix %}
+          <tr>
+            <td class="matrix-video-title" title="{{ row.video_title }}">{{ row.video_title }}</td>
+            {% for cell in row.cells %}
+            <td class="{{ 'matrix-selected-llm' if cell.is_llm_selected else 'matrix-selected' if cell.is_selected else '' }}">{{ "%.2f" | format(cell.score) }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>

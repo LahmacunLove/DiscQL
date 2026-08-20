@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DiscQL{% endblock %}</title>
+  <link rel="stylesheet" href="{{ static_url('styles.css') }}">
+  <script src="{{ url_for('static', path='htmx.min.js') }}"></script>
+</head>
+<body>
+  <script>
+    // Applied before the header/results render, to avoid a flash of
+    // controls appearing then disappearing on page load for users who
+    // left crate mode off (the common case - see .crate-control's default
+    // display:none in styles.css, which this class overrides).
+    if (localStorage.getItem("crateMode") === "on") {
+      document.documentElement.classList.add("crate-mode-on");
+    }
+  </script>
+  <header class="topbar">
+    <div class="topbar-row topbar-main">
+      <a class="brand" href="/releases">DiscQL</a>
+      <a class="nav-link" href="/crates">Crates</a>
+      <a class="nav-link" href="/settings">Settings</a>
+      {% block toolbar %}{% endblock %}
+    </div>
+    <div class="topbar-row topbar-tasks">
+      {% block toolbar_secondary %}{% endblock %}
+      <label class="crate-mode-toggle" title="Show add/remove-from-crate controls on release cards">
+        <input type="checkbox" id="crate-mode-checkbox" onchange="
+          document.documentElement.classList.toggle('crate-mode-on', this.checked);
+          localStorage.setItem('crateMode', this.checked ? 'on' : 'off');
+        ">
+        crate mode
+      </label>
+      <script>
+        // Sync the checkbox's visual state with the class set (or not set)
+        // by the early <script> above - can't be done there directly,
+        // since this checkbox element doesn't exist yet at that point.
+        document.getElementById("crate-mode-checkbox").checked =
+          document.documentElement.classList.contains("crate-mode-on");
+      </script>
+      <label class="force-refetch-label" title="Redo already-finished work instead of skipping it, for whichever task you start below">
+        <input type="checkbox" name="force" id="global-force" value="true">
+        force
+      </label>
+      <div id="sync-widget-wrapper" hx-get="/sync/status" hx-trigger="load" hx-swap="innerHTML">
+        <div class="sync-widget idle"><button disabled>Discogs Sync</button></div>
+      </div>
+      <div id="youtube-widget-wrapper" hx-get="/youtube/status" hx-trigger="load" hx-swap="innerHTML">
+        <div class="sync-widget idle"><button disabled>Match YT</button></div>
+      </div>
+      <div id="audio-widget-wrapper" hx-get="/audio/status" hx-trigger="load" hx-swap="innerHTML">
+        <div class="sync-widget idle"><button disabled>Analyze audio</button></div>
+      </div>
+      <div id="run-all-widget-wrapper" hx-get="/run_all/status" hx-trigger="load" hx-swap="innerHTML">
+        <div class="sync-widget idle"><button disabled>Run All</button></div>
+      </div>
+      <div id="pipeline-pending-wrapper" class="topbar-pending" hx-get="/pipeline/pending" hx-trigger="load" hx-swap="innerHTML"></div>
+    </div>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

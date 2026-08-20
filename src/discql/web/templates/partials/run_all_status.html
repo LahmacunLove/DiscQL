@@ -1,0 +1,38 @@
+{% set widget_id = "run-all-widget" %}
+{% if task.status == "running" %}
+<div id="{{ widget_id }}" class="sync-widget running"
+     hx-get="/run_all/status" hx-trigger="every 1500ms" hx-swap="outerHTML">
+  <span class="spinner"></span>
+  <span class="sync-text">
+    Running all… {{ task.current }}{% if task.total %}/{{ task.total }}{% endif %}{% if task.message %} — {{ task.message }}{% endif %}
+  </span>
+  <button hx-post="/run_all/stop" hx-target="#{{ widget_id }}" hx-swap="outerHTML">Stop</button>
+</div>
+{% elif task.status == "cancelled" %}
+<div id="{{ widget_id }}" class="sync-widget idle">
+  <span class="sync-text">Run All stopped{% if task.current %} after {{ task.current }} release{{ 's' if task.current != 1 else '' }}{% endif %}</span>
+  <button hx-post="/run_all/start" hx-include="#global-force" hx-target="#{{ widget_id }}" hx-swap="outerHTML">Run All</button>
+</div>
+{% elif task.status == "error" %}
+<div id="{{ widget_id }}" class="sync-widget error">
+  <span class="sync-text">Run All failed: {{ task.message }}</span>
+  <button hx-post="/run_all/start" hx-include="#global-force" hx-target="#{{ widget_id }}" hx-swap="outerHTML">Retry Run All</button>
+</div>
+{% elif task.status == "done" %}
+<div id="{{ widget_id }}" class="sync-widget done">
+  <span class="sync-text">
+    Ran all for {{ task.current }} release{{ 's' if task.current != 1 else '' }}{% if task.errors %} ({{ task.errors|length }} error{{ 's' if task.errors|length != 1 else '' }}){% endif %}
+  </span>
+  <button hx-post="/run_all/start" hx-include="#global-force" hx-target="#{{ widget_id }}" hx-swap="outerHTML">Run All</button>
+</div>
+{% else %}
+<div id="{{ widget_id }}" class="sync-widget idle">
+  <button
+    hx-post="/run_all/start"
+    hx-include="#global-force"
+    hx-target="#{{ widget_id }}"
+    hx-swap="outerHTML"
+    title="Match YouTube videos, download audio, and analyze every release with a video candidate"
+  >Run All</button>
+</div>
+{% endif %}

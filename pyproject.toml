@@ -1,0 +1,36 @@
+[project]
+name = "discql"
+version = "0.1.0"
+description = "A personal tool to mirror a Discogs collection, match/analyze audio, and browse/pack it via a web GUI"
+readme = "README.md"
+authors = [
+    { name = "Ferdinand Pfender", email = "Ferdinand.Pfender@posteo.de" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "essentia-tensorflow>=2.1b6.dev1438",
+    "fastapi>=0.141.1",
+    "jinja2>=3.1.6",
+    "pillow>=12.3.0",
+    "python-dotenv>=1.2.3",
+    "python-multipart>=0.0.20",
+    "python3-discogs-client>=2.9",
+    "rapidfuzz>=3.14.5",
+    "uvicorn[standard]>=0.52.3",
+    "yt-dlp>=2026.7.4",
+]
+
+[project.scripts]
+discql-sync = "discql.cli:main"
+discql-web = "discql.web.app:main"
+discql-analyze-file = "discql.analyze_file:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.10.0",
+    "pytest>=9.1.1",
+]

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{{ crate.name }} — DiscQL{% endblock %}
+
+{% block toolbar %}
+<a class="back-link" href="/crates">&larr; All crates</a>
+<form class="filters" method="post" action="/crates/{{ crate.id }}/rename">
+  <input type="text" name="name" value="{{ crate.name }}" required>
+  <button type="submit">Rename</button>
+</form>
+<form method="post" action="/crates/{{ crate.id }}/delete"
+      onsubmit="return confirm('Delete crate &quot;{{ crate.name }}&quot;? Releases stay in your library, only crate membership is removed.');">
+  <button type="submit" class="danger-link">Delete crate</button>
+</form>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<span class="view-toggle">
+  <a class="{{ 'active' if view == 'grid' else '' }}" href="/crates/{{ crate.id }}?view=grid">Grid</a>
+  <a class="{{ 'active' if view == 'list' else '' }}" href="/crates/{{ crate.id }}?view=list">List</a>
+</span>
+{% endblock %}
+
+{% block content %}
+<div id="results-wrapper">
+  {% include results_partial %}
+</div>
+{% endblock %}

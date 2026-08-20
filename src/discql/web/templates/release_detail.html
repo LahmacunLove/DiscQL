@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}{{ release.title }} — DiscQL{% endblock %}
+
+{% block toolbar %}
+<a class="back-link" href="/releases">&larr; Back to library</a>
+{% endblock %}
+
+{% block content %}
+{% include "partials/release_detail_content.html" %}
+{% endblock %}

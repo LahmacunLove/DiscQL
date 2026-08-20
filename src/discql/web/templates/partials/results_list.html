@@ -1,0 +1,47 @@
+{% if not continuation %}
+<p class="result-count">{{ total }} release{{ 's' if total != 1 else '' }}</p>
+<div id="results" class="results-list">
+{% endif %}
+{% for item in items %}
+<div class="list-row">
+  <a class="list-row-link" href="/releases/{{ item.id }}" aria-label="{{ item.title }}"></a>
+  {% if item.cover_image_url %}
+  <img src="/covers/{{ item.id }}" alt="{{ item.title }}" loading="lazy">
+  {% else %}
+  <div class="cover-placeholder cover-placeholder-sm">♪</div>
+  {% endif %}
+  <span class="list-title">{{ item.title }}</span>
+  <span class="list-artist">{{ item.artist_names }}</span>
+  <span class="list-year">{{ item.year or "" }}</span>
+  <span class="list-genres">
+    {% for g in item.genres[:3] %}<span class="badge">{{ g }}</span>{% endfor %}
+  </span>
+  {% set status = status_by_id[item.id] %}
+  <span class="status-indicators">
+    <span class="status-dot {{ status.matching }}" title="YouTube matching: {{ 'all tracks matched' if status.matching == 'done' else 'processed, not every track matched' if status.matching == 'partial' else 'not processed yet' }} ({{ item.matched_count }}/{{ item.track_count }} tracks)">M</span>
+    <span class="status-dot {{ status.download }}" title="Audio download: {{ 'all matched tracks downloaded' if status.download == 'partial' else 'done' if status.download == 'done' else 'not done' }} ({{ item.matched_count }}/{{ item.track_count }} tracks matched)">D</span>
+    <span class="status-dot {{ status.analysis }}" title="Audio analysis: {{ 'all matched tracks analyzed' if status.analysis == 'partial' else 'done' if status.analysis == 'done' else 'not done' }} ({{ item.analyzed_count }}/{{ item.track_count }} tracks)">A</span>
+  </span>
+  {% include "partials/crate_control.html" %}
+</div>
+{% endfor %}
+{% if not items and not continuation %}
+<p class="empty-state">{{ "This crate is empty - add releases to it from the library." if crate else "No releases match your filters." }}</p>
+{% endif %}
+{% if has_more %}
+<div class="pagination-controls">
+  <button
+    class="load-more"
+    hx-get="/releases?{{ next_query }}"
+    hx-target="closest .pagination-controls"
+    hx-swap="outerHTML"
+  >Load more ({{ total - loaded_count }} remaining)</button>
+  <button
+    class="load-more"
+    hx-get="/releases?{{ all_query }}"
+    hx-target="closest .pagination-controls"
+    hx-swap="outerHTML"
+  >Show all ({{ total - loaded_count }} remaining)</button>
+</div>
+{% endif %}
+{% if not continuation %}</div>{% endif %}

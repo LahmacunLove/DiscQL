@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block toolbar %}
+<form class="filters" hx-get="/releases" hx-target="#results-wrapper" hx-swap="innerHTML" hx-push-url="true">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search title or artist…">
+  <details class="checkbox-filter">
+    <summary>Genres{% if selected_genres %} ({{ selected_genres|length }}){% endif %}</summary>
+    <div class="checkbox-filter-options">
+      {% for g in genres %}
+      <label><input type="checkbox" name="genre" value="{{ g }}" {% if g in selected_genres %}checked{% endif %}> {{ g }}</label>
+      {% endfor %}
+    </div>
+  </details>
+  <details class="checkbox-filter">
+    <summary>Styles{% if selected_styles %} ({{ selected_styles|length }}){% endif %}</summary>
+    <div class="checkbox-filter-options">
+      {% for s in styles %}
+      <label><input type="checkbox" name="style" value="{{ s }}" {% if s in selected_styles %}checked{% endif %}> {{ s }}</label>
+      {% endfor %}
+    </div>
+  </details>
+  <select name="year">
+    <option value="">All years</option>
+    {% for y in years %}
+    <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="label" list="labels-datalist" value="{{ label }}" placeholder="Label">
+  <datalist id="labels-datalist">
+    {% for l in labels %}<option value="{{ l }}">{% endfor %}
+  </datalist>
+  <input type="text" name="artist" list="artists-datalist" value="{{ artist }}" placeholder="Artist">
+  <datalist id="artists-datalist">
+    {% for a in artists %}<option value="{{ a }}">{% endfor %}
+  </datalist>
+  <input type="number" name="bpm" value="{{ bpm }}" placeholder="BPM" step="1" min="0">
+  <details class="checkbox-filter">
+    <summary>BPM tolerance{% if selected_bpm_tolerance %} ({{ selected_bpm_tolerance|length }}){% endif %}</summary>
+    <div class="checkbox-filter-options">
+      <label><input type="checkbox" name="bpm_tolerance" value="0" {% if "0" in selected_bpm_tolerance %}checked{% endif %}> Exact</label>
+      <label><input type="checkbox" name="bpm_tolerance" value="8" {% if "8" in selected_bpm_tolerance %}checked{% endif %}> &plusmn; 8%</label>
+      <label><input type="checkbox" name="bpm_tolerance" value="16" {% if "16" in selected_bpm_tolerance %}checked{% endif %}> &plusmn; 16%</label>
+    </div>
+  </details>
+  <select name="sort">
+    <option value="date_added_desc" {% if sort == "date_added_desc" %}selected{% endif %}>Newest added</option>
+    <option value="date_added_asc" {% if sort == "date_added_asc" %}selected{% endif %}>Oldest added</option>
+    <option value="title_asc" {% if sort == "title_asc" %}selected{% endif %}>Title A–Z</option>
+    <option value="artist_asc" {% if sort == "artist_asc" %}selected{% endif %}>Artist A–Z</option>
+    <option value="label_asc" {% if sort == "label_asc" %}selected{% endif %}>Label A–Z</option>
+    <option value="year_desc" {% if sort == "year_desc" %}selected{% endif %}>Release year (newest)</option>
+    <option value="year_asc" {% if sort == "year_asc" %}selected{% endif %}>Release year (oldest)</option>
+  </select>
+  <button type="submit">Search</button>
+  <a class="reset-link" href="/releases">Reset</a>
+</form>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<span class="view-toggle">
+  <a class="{{ 'active' if view == 'grid' else '' }}"
+     href="/releases?{{ grid_query }}"
+     hx-get="/releases?{{ grid_query }}" hx-target="#results-wrapper" hx-swap="innerHTML" hx-push-url="true">Grid</a>
+  <a class="{{ 'active' if view == 'list' else '' }}"
+     href="/releases?{{ list_query }}"
+     hx-get="/releases?{{ list_query }}" hx-target="#results-wrapper" hx-swap="innerHTML" hx-push-url="true">List</a>
+</span>
+{% endblock %}
+
+{% block content %}
+<div id="results-wrapper">
+  {% include results_partial %}
+</div>
+{% endblock %}

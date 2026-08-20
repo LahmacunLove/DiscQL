@@ -1,0 +1,15 @@
+{% if crate %}
+<form class="crate-control crate-control-remove" method="post" action="/crates/{{ crate.id }}/remove_release/{{ item.id }}">
+  <input type="hidden" name="redirect_to" value="{{ request.url.path }}?{{ request.url.query }}">
+  <button type="submit" title="Remove from this crate">&minus; Remove</button>
+</form>
+{% elif all_crates %}
+<form class="crate-control crate-control-add" method="post" action="/crates/add_release">
+  <input type="hidden" name="release_id" value="{{ item.id }}">
+  <input type="hidden" name="redirect_to" value="{{ request.url.path }}?{{ request.url.query }}">
+  <select name="crate_id" title="Add to crate">
+    {% for c in all_crates %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+  </select>
+  <button type="submit" title="Add to crate">+</button>
+</form>
+{% endif %}

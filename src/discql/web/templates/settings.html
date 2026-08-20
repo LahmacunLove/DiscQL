@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — DiscQL{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+  {% if not config.has_discogs_auth %}
+  <div class="settings-welcome">
+    <h1>Welcome</h1>
+    <p>Before anything else works, this needs access to your Discogs collection - either paste a personal access
+      token, or connect via OAuth, below.</p>
+  </div>
+  {% else %}
+  <h1>Settings</h1>
+  {% endif %}
+
+  {% if saved %}<p class="settings-flash settings-saved">Saved.</p>{% endif %}
+  {% if oauth_error %}<p class="settings-flash settings-error">Discogs authorization failed: {{ oauth_error }}</p>{% endif %}
+
+  <section class="settings-section">
+    <h2>Discogs access</h2>
+
+    <form class="settings-form" method="post" action="/settings">
+      <label class="settings-field">
+        <span>Personal access token</span>
+        <input type="password" name="discogs_user_token"
+               placeholder="{{ 'Currently set - leave blank to keep' if config.discogs_user_token else 'Paste your token here' }}">
+      </label>
+      <p class="settings-hint">
+        Create one at <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener">discogs.com/settings/developers</a>.
+      </p>
+
+      <h3>Matching &amp; download tuning</h3>
+
+      <label class="settings-field">
+        <span>Fuzzy confident threshold (YouTube)</span>
+        <input type="text" name="fuzzy_confident_threshold" value="{{ config.fuzzy_confident_threshold }}">
+      </label>
+      <label class="settings-field">
+        <span>Fuzzy tie margin (YouTube)</span>
+        <input type="text" name="fuzzy_tie_margin" value="{{ config.fuzzy_tie_margin }}">
+      </label>
+      <label class="settings-field">
+        <span>Fuzzy denoise terms (comma-separated)</span>
+        <input type="text" name="fuzzy_denoise_terms" value="{{ config.fuzzy_denoise_terms | join(', ') }}">
+      </label>
+      <label class="settings-field">
+        <span>YouTube cookies browser</span>
+        <input type="text" name="youtube_cookies_browser" value="{{ config.youtube_cookies_browser or '' }}"
+               placeholder="e.g. firefox - leave empty to disable">
+      </label>
+      <label class="settings-field">
+        <span>YouTube audio max bitrate (kbps)</span>
+        <input type="text" name="youtube_audio_max_bitrate_kbps"
+               value="{{ config.youtube_audio_max_bitrate_kbps if config.youtube_audio_max_bitrate_kbps is not none else '' }}"
+               placeholder="leave empty to disable the cap">
+      </label>
+      <label class="settings-field">
+        <span>Local FLAC library root</span>
+        <input type="text" name="local_flac_dir" value="{{ config.local_flac_dir or '' }}"
+               placeholder="leave empty to disable local matching">
+      </label>
+      <label class="settings-field">
+        <span>Local match confident threshold</span>
+        <input type="text" name="local_match_confident_threshold" value="{{ config.local_match_confident_threshold }}">
+      </label>
+      <label class="settings-field">
+        <span>Max parallel workers ("Match YT" / "Run All")</span>
+        <input type="text" name="max_workers" value="{{ config.max_workers }}">
+      </label>
+
+      <button type="submit">Save</button>
+    </form>
+
+    <div class="settings-oauth">
+      <h3>Or: authorize via Discogs (OAuth)</h3>
+      {% if config.discogs_oauth_token %}
+      <p>Connected via OAuth - takes priority over the personal token above while connected.</p>
+      <form method="post" action="/settings/discogs/disconnect">
+        <button type="submit" class="danger-link">Disconnect</button>
+      </form>
+      {% else %}
+      <p class="settings-hint">
+        Register an Application at <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener">discogs.com/settings/developers</a>
+        with this callback URL, then paste the Consumer Key/Secret it gives you below:
+      </p>
+      <p class="settings-hint"><code>{{ oauth_callback_url }}</code></p>
+      <form class="settings-form" method="post" action="/settings/discogs/authorize">
+        <label class="settings-field">
+          <span>Consumer Key</span>
+          <input type="text" name="consumer_key" value="{{ config.discogs_consumer_key or '' }}" required>
+        </label>
+        <label class="settings-field">
+          <span>Consumer Secret</span>
+          <input type="password" name="consumer_secret"
+                 placeholder="{{ 'Re-enter to authorize (not shown for a previously-saved secret)' if config.discogs_consumer_secret else '' }}" required>
+        </label>
+        <button type="submit">Save &amp; authorize with Discogs</button>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>Storage locations</h2>
+    <p class="settings-hint">Read-only here - change via <code>~/.config/discql/config</code> or environment
+      variables if you really need to move these (not recommended once data already lives there).</p>
+    <dl class="settings-readonly">
+      <dt>Database</dt><dd>{{ config.db_path }}</dd>
+      <dt>Downloaded audio</dt><dd>{{ config.audio_dir }}</dd>
+      <dt>Waveforms</dt><dd>{{ config.waveform_dir }}</dd>
+      <dt>Essentia models</dt><dd>{{ config.essentia_models_dir }}</dd>
+      <dt>Cover art cache</dt><dd>{{ config.cover_dir }}</dd>
+    </dl>
+  </section>
+</div>
+{% endblock %}

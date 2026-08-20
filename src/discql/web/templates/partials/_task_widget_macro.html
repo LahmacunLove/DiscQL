@@ -1,0 +1,33 @@
+{% macro task_widget(task, widget_id, status_url, start_url, progress_label, done_label, noun, action_label, retry_label, fail_label, stop_url) %}
+{% if task.status == "running" %}
+<div id="{{ widget_id }}" class="sync-widget running"
+     hx-get="{{ status_url }}" hx-trigger="every 1500ms" hx-swap="outerHTML">
+  <span class="spinner"></span>
+  <span class="sync-text">
+    {{ progress_label }}… {{ task.current }}{% if task.total %}/{{ task.total }}{% endif %}{% if task.message %} — {{ task.message }}{% endif %}
+  </span>
+  <button hx-post="{{ stop_url }}" hx-target="#{{ widget_id }}" hx-swap="outerHTML">Stop</button>
+</div>
+{% elif task.status == "cancelled" %}
+<div id="{{ widget_id }}" class="sync-widget idle">
+  <span class="sync-text">{{ fail_label }} stopped{% if task.current %} after {{ task.current }} {{ noun }}{{ 's' if task.current != 1 else '' }}{% endif %}</span>
+  <button hx-post="{{ start_url }}" hx-include="#global-force" hx-target="#{{ widget_id }}" hx-swap="outerHTML">{{ action_label }}</button>
+</div>
+{% elif task.status == "error" %}
+<div id="{{ widget_id }}" class="sync-widget error">
+  <span class="sync-text">{{ fail_label }} failed: {{ task.message }}</span>
+  <button hx-post="{{ start_url }}" hx-include="#global-force" hx-target="#{{ widget_id }}" hx-swap="outerHTML">{{ retry_label }}</button>
+</div>
+{% elif task.status == "done" %}
+<div id="{{ widget_id }}" class="sync-widget done">
+  <span class="sync-text">
+    {{ done_label }} {{ task.current }} {{ noun }}{{ 's' if task.current != 1 else '' }}{% if task.errors %} ({{ task.errors|length }} error{{ 's' if task.errors|length != 1 else '' }}){% endif %}
+  </span>
+  <button hx-post="{{ start_url }}" hx-include="#global-force" hx-target="#{{ widget_id }}" hx-swap="outerHTML">{{ action_label }}</button>
+</div>
+{% else %}
+<div id="{{ widget_id }}" class="sync-widget idle">
+  <button hx-post="{{ start_url }}" hx-include="#global-force" hx-target="#{{ widget_id }}" hx-swap="outerHTML">{{ action_label }}</button>
+</div>
+{% endif %}
+{% endmacro %}

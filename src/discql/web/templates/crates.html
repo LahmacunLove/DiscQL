@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Crates — DiscQL{% endblock %}
+
+{% block toolbar %}
+<form class="filters" method="post" action="/crates">
+  <input type="text" name="name" placeholder="New crate name" required>
+  <button type="submit">Create crate</button>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="crates-list">
+  {% for c in crates %}
+  <a class="crate-card" href="/crates/{{ c.id }}">
+    <span class="crate-card-name">{{ c.name }}</span>
+    <span class="crate-card-count">{{ c.item_count }} release{{ 's' if c.item_count != 1 else '' }}</span>
+  </a>
+  {% endfor %}
+  {% if not crates %}
+  <p class="empty-state">No crates yet - create one above.</p>
+  {% endif %}
+</div>
+{% endblock %}
